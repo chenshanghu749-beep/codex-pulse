@@ -1,0 +1,18 @@
+.DS_Store
+build/
+DerivedData/
+.swiftpm/
+*.xcuserstate
+Tests/codex-home/tmp/
+
+# Local credentials and environment files must never be committed.
+.env
+.env.*
+*.pem
+*.p12
+**/codeapi.key
+**/config.toml.codeapi-status.bak
+
+# DMGs are ignored except for the verified installer published by this project.
+*.dmg
+!dist/CodeAPI-Status-1.5.0.dmg
