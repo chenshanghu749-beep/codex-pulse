@@ -1,8 +1,8 @@
 # Codex Pulse
 
-Codex Pulse 是一款 Codex 风格的原生 macOS 菜单栏应用：切换 OpenAI 官方路由和多个自定义模型提供商，查看余额、配额与 Token 活动，并用动态图标显示 Codex 当前任务阶段。
-
 <img width="684" height="60" alt="image" src="https://github.com/user-attachments/assets/41266f0f-89f3-4a37-91da-4133f2eb09a9" />
+
+Codex Pulse 是一款 Codex 风格的原生 macOS 菜单栏应用：切换 OpenAI 官方路由和多个自定义模型提供商，查看余额、配额与 Token 活动，并用动态图标显示 Codex 当前任务阶段。
 
 ## 主要功能
 
