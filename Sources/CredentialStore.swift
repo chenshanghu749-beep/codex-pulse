@@ -5,7 +5,7 @@ enum CredentialStoreError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case let .cannotSave(message): return "无法保存 CodeAPI Key：\(message)"
+        case let .cannotSave(message): return "无法保存 API Key：\(message)"
         }
     }
 }
@@ -16,25 +16,32 @@ enum CredentialStore {
             .appendingPathComponent(".codex/codeapi-status", isDirectory: true)
     }
 
-    static var keyURL: URL { directoryURL.appendingPathComponent("codeapi.key") }
+    private static var keysDirectoryURL: URL { directoryURL.appendingPathComponent("keys", isDirectory: true) }
 
-    static func load() -> String? {
-        guard let data = try? Data(contentsOf: keyURL),
+    static func keyURL(for providerID: String) -> URL {
+        if providerID == "codeapi" { return directoryURL.appendingPathComponent("codeapi.key") }
+        let safeID = providerID.unicodeScalars.map { scalar -> Character in
+            CharacterSet.alphanumerics.contains(scalar) || scalar == "-" || scalar == "_"
+                ? Character(String(scalar)) : "_"
+        }
+        return keysDirectoryURL.appendingPathComponent(String(safeID) + ".key")
+    }
+
+    static func load(providerID: String) -> String? {
+        guard let data = try? Data(contentsOf: keyURL(for: providerID)),
               let value = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
               !value.isEmpty else { return nil }
         return value
     }
 
-    static func save(_ key: String) throws {
+    static func save(_ key: String, providerID: String) throws {
         do {
             let fileManager = FileManager.default
-            try fileManager.createDirectory(
-                at: directoryURL,
-                withIntermediateDirectories: true,
-                attributes: [.posixPermissions: 0o700]
-            )
-            try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directoryURL.path)
+            try prepareDirectory()
+            try fileManager.createDirectory(at: keysDirectoryURL, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: keysDirectoryURL.path)
+            let keyURL = keyURL(for: providerID)
 
             if !fileManager.fileExists(atPath: keyURL.path) {
                 guard fileManager.createFile(
@@ -58,5 +65,22 @@ enum CredentialStore {
         } catch {
             throw CredentialStoreError.cannotSave(error.localizedDescription)
         }
+    }
+
+    static func delete(providerID: String) throws {
+        let url = keyURL(for: providerID)
+        if FileManager.default.fileExists(atPath: url.path) {
+            try FileManager.default.removeItem(at: url)
+        }
+    }
+
+    static func prepareDirectory() throws {
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(
+            at: directoryURL,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directoryURL.path)
     }
 }

@@ -1,19 +1,14 @@
 #!/bin/zsh
 set -euo pipefail
 
-readonly APP_NAME="CodeAPI Status.app"
-readonly VERSION="1.5.0"
-readonly DMG_NAME="CodeAPI-Status-${VERSION}.dmg"
-readonly DMG_URL="https://code.bitsland.io/inno/eryaya/skills/codeapi-status/-/raw/main/dist/${DMG_NAME}"
-readonly EXPECTED_SHA256="ef826c652cc3d4c3e959232525e7d10e8854a1cda28dfc26dd07e11febef2099"
+readonly APP_NAME="Codex Pulse.app"
+readonly VERSION="2.4.1"
+readonly DMG_NAME="Codex-Pulse-${VERSION}.dmg"
+readonly DMG_URL="https://raw.githubusercontent.com/chenshanghu749-beep/codex-pulse/main/dist/${DMG_NAME}"
+readonly EXPECTED_SHA256="a09f2428265ce7a3ef4de67484ed8e2c0e3c425489e257c8c932ff6764aca342"
 
-if [[ -z "${GITLAB_TOKEN:-}" ]]; then
-    echo "缺少 GITLAB_TOKEN。请使用具有 read_repository 权限的 GitLab Token。" >&2
-    exit 1
-fi
-
-install_dir="${CODEAPI_STATUS_INSTALL_DIR:-$HOME/Applications}"
-work_dir="$(mktemp -d "${TMPDIR:-/tmp}/codeapi-status-install.XXXXXX")"
+install_dir="${CODEX_PULSE_INSTALL_DIR:-${CODEAPI_STATUS_INSTALL_DIR:-$HOME/Applications}}"
+work_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-pulse-install.XXXXXX")"
 dmg_path="$work_dir/$DMG_NAME"
 mount_dir="$work_dir/mount"
 mounted=false
@@ -27,8 +22,8 @@ cleanup() {
 trap cleanup EXIT
 
 /bin/mkdir -p "$mount_dir"
-echo "正在下载 CodeAPI Status ${VERSION}…"
-/usr/bin/curl -fsSL --retry 3 --header "PRIVATE-TOKEN: $GITLAB_TOKEN" "$DMG_URL" -o "$dmg_path"
+echo "正在下载 Codex Pulse ${VERSION}…"
+/usr/bin/curl -fsSL --retry 3 "$DMG_URL" -o "$dmg_path"
 
 actual_sha256="$(/usr/bin/shasum -a 256 "$dmg_path" | /usr/bin/awk '{print $1}')"
 if [[ "$actual_sha256" != "$EXPECTED_SHA256" ]]; then
@@ -52,5 +47,5 @@ fi
 mounted=false
 
 echo "已安装到：$target_app"
-echo "正在启动 CodeAPI Status…"
+echo "正在启动 Codex Pulse…"
 /usr/bin/open "$target_app"

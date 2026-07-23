@@ -151,7 +151,7 @@ final class PreferencesWindowController: NSWindowController, NSTextFieldDelegate
             backing: .buffered,
             defer: false
         )
-        window.title = "CodeAPI Status 设置"
+        window.title = "Codex Pulse 设置"
         window.isReleasedWhenClosed = false
         window.center()
         super.init(window: window)
@@ -435,7 +435,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(dashboard)
 
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "退出 CodeAPI Status", action: #selector(quitApp), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "退出 Codex Pulse", action: #selector(quitApp), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
     }
@@ -473,7 +473,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 }
 #endif
 
-if CommandLine.arguments.contains("--task-state-test") {
+if CommandLine.arguments.contains("--login-status-test") {
+    print("LOGIN_STATUS \(OfficialUsageClient.loginStatusDiagnostic())")
+} else if CommandLine.arguments.contains("--task-state-test") {
     let snapshot = TaskActivityReader.read()
     switch snapshot.state {
     case let .running(count): print("TASK_STATE_OK running=\(count)")
@@ -486,9 +488,25 @@ if CommandLine.arguments.contains("--task-state-test") {
         do {
             let snapshot = try await OfficialUsageClient.fetch()
             let remaining = snapshot.primary?.remainingPercent ?? -1
-            print(String(format: "OFFICIAL_USAGE_OK remaining=%.0f", remaining))
+            print(String(format: "OFFICIAL_USAGE_OK loggedIn=%@ remaining=%.0f", snapshot.isLoggedIn ? "yes" : "no", remaining))
         } catch {
             print("OFFICIAL_USAGE_ERROR \(error.localizedDescription)")
+        }
+        semaphore.signal()
+    }
+    semaphore.wait()
+} else if CommandLine.arguments.contains("--session-history-test") {
+    let semaphore = DispatchSemaphore(value: 0)
+    Task.detached {
+        do {
+            let sessions = try await SessionHistoryClient.fetch()
+            let providerCounts = Dictionary(grouping: sessions, by: \.modelProvider)
+                .map { "\($0.key)=\($0.value.count)" }
+                .sorted()
+                .joined(separator: ",")
+            print("SESSION_HISTORY_OK count=\(sessions.count) providers=\(providerCounts)")
+        } catch {
+            print("SESSION_HISTORY_ERROR \(error.localizedDescription)")
         }
         semaphore.signal()
     }
@@ -501,17 +519,74 @@ if CommandLine.arguments.contains("--task-state-test") {
     [mcp_servers.example]
     command = "example"
     """
-    let codeAPI = RouteConfigManager.render(sample, route: .codeAPI)
-    precondition(codeAPI.hasPrefix("model_provider = \"codeapi\""))
-    precondition(codeAPI.contains("model = \"gpt-5.6-sol\""))
-    precondition(codeAPI.contains("[mcp_servers.example]"))
-    precondition(codeAPI.contains("command = \"/bin/cat\""))
-    precondition(!codeAPI.contains("model_provider = \"legacy\""))
+    let provider = ProviderProfile(
+        id: "test-provider",
+        name: "Test \"Provider\"",
+        baseURL: "https://api.example.com/v1",
+        model: "custom-model"
+    )
+    let custom = RouteConfigManager.render(sample, route: .provider(provider.id), profile: provider)
+    precondition(custom.hasPrefix("model_provider = \"codeapi_status_provider_test-provider\""))
+    precondition(custom.contains("model = \"custom-model\""))
+    precondition(custom.contains("name = \"Test \\\"Provider\\\"\""))
+    precondition(custom.contains("base_url = \"https://api.example.com/v1\""))
+    precondition(custom.contains("[mcp_servers.example]"))
+    precondition(custom.contains("command = \"/bin/cat\""))
+    precondition(custom.contains("test-provider.key"))
+    precondition(custom.contains("[model_providers.codeapi_status_custom]"))
+    precondition(!custom.contains("model_provider = \"legacy\""))
 
-    let official = RouteConfigManager.render(codeAPI, route: .official)
+    let official = RouteConfigManager.render(
+        custom,
+        route: .official,
+        profiles: [provider],
+        legacyProfile: provider,
+        officialModel: "gpt-5.6-sol"
+    )
     precondition(official.hasPrefix("model_provider = \"openai\""))
-    precondition(official.components(separatedBy: RouteConfigManager.beginMarker).count == 2)
+    precondition(official.contains("model = \"gpt-5.6-sol\""))
+    precondition(official.contains(RouteConfigManager.beginMarker))
+    precondition(official.contains("[model_providers.codeapi_status_provider_test-provider]"))
     precondition(official.contains("[mcp_servers.example]"))
+
+    let codeAPIConfig = RouteConfigManager.render(
+        sample,
+        route: .provider("codeapi"),
+        profile: .codeAPI,
+        profiles: [.codeAPI],
+        legacyProfile: .codeAPI
+    )
+    precondition(codeAPIConfig.contains("[model_providers.codeapi_status_custom]"))
+    precondition(codeAPIConfig.contains("[model_providers.codeapi]"))
+    precondition(codeAPIConfig.components(separatedBy: "[model_providers.codeapi]").count == 2)
+    precondition(codeAPIConfig.components(separatedBy: "[model_providers.codeapi.auth]").count == 2)
+
+    let deepSeek = ProviderProfile(
+        id: "deepseek-test",
+        name: "DeepSeek",
+        baseURL: "https://api.deepseek.com",
+        model: "deepseek-v4-pro"
+    )
+    let deepSeekConfig = RouteConfigManager.render(
+        sample,
+        route: .provider(deepSeek.id),
+        profile: deepSeek,
+        profiles: [deepSeek],
+        legacyProfile: deepSeek
+    )
+    precondition(deepSeek.effectiveAPIFormat == .chatCompletions)
+    precondition(deepSeekConfig.contains(
+        "base_url = \"http://127.0.0.1:37531/provider/deepseek-test\""
+    ))
+    precondition(deepSeekConfig.contains("wire_api = \"responses\""))
+
+    for style in StatusIconStyle.allCases {
+        for signal in TrafficSignal.allCases {
+            let icon = StatusIconRenderer.image(style: style, active: signal)
+            precondition(icon.size.height == 18)
+            precondition(icon.tiffRepresentation != nil)
+        }
+    }
 
     let taskRoot = FileManager.default.temporaryDirectory
         .appendingPathComponent("codeapi-status-task-test-\(UUID().uuidString)", isDirectory: true)

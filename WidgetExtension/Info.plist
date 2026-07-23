@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
+    <key>CFBundleDisplayName</key><string>Codex Pulse</string>
+    <key>CFBundleExecutable</key><string>CodexPulseWidget</string>
+    <key>CFBundleIdentifier</key><string>net.nexita.codeapi-status.widget</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleName</key><string>Codex Pulse Widget</string>
+    <key>CFBundlePackageType</key><string>XPC!</string>
+    <key>CFBundleShortVersionString</key><string>2.4.1</string>
+    <key>CFBundleVersion</key><string>17</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array><string>MacOSX</string></array>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>NSExtension</key>
+    <dict>
+        <key>NSExtensionPointIdentifier</key><string>com.apple.widgetkit-extension</string>
+        <key>NSExtensionAttributes</key>
+        <dict>
+            <key>WKAppBundleIdentifier</key>
+            <string>net.nexita.codeapi-status</string>
+        </dict>
+    </dict>
+</dict>
+</plist>

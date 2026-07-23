@@ -3,23 +3,42 @@ set -euo pipefail
 
 ROOT_DIR="${0:A:h}"
 BUILD_DIR="$ROOT_DIR/build"
-APP_DIR="$BUILD_DIR/CodeAPI Status.app"
+APP_DIR="$BUILD_DIR/Codex Pulse.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
+PLUGINS_DIR="$CONTENTS_DIR/PlugIns"
+WIDGET_DIR="$PLUGINS_DIR/CodexPulseWidget.appex"
+WIDGET_CONTENTS_DIR="$WIDGET_DIR/Contents"
+WIDGET_MACOS_DIR="$WIDGET_CONTENTS_DIR/MacOS"
 MODULE_CACHE_DIR="$BUILD_DIR/ModuleCache"
 ICONSET_DIR="$BUILD_DIR/AppIcon.iconset"
 ICON_SOURCE="$BUILD_DIR/AppIcon-1024.png"
 
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$MODULE_CACHE_DIR" "$ICONSET_DIR"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$MODULE_CACHE_DIR" "$ICONSET_DIR" "$WIDGET_MACOS_DIR"
 
 swiftc \
   -O \
   -target arm64-apple-macos13.0 \
   -module-cache-path "$MODULE_CACHE_DIR" \
   -framework AppKit \
+  -framework WidgetKit \
   "$ROOT_DIR"/Sources/*.swift \
-  -o "$MACOS_DIR/CodeAPIStatus"
+  -o "$MACOS_DIR/CodexPulse"
+
+swiftc \
+  -O \
+  -parse-as-library \
+  -application-extension \
+  -target arm64-apple-macos14.0 \
+  -module-cache-path "$MODULE_CACHE_DIR" \
+  -framework SwiftUI \
+  -framework WidgetKit \
+  "$ROOT_DIR"/WidgetExtension/CodexPulseWidget.swift \
+  -o "$WIDGET_MACOS_DIR/CodexPulseWidget"
+
+cp "$ROOT_DIR/WidgetExtension/Info.plist" "$WIDGET_CONTENTS_DIR/Info.plist"
+chmod +x "$WIDGET_MACOS_DIR/CodexPulseWidget"
 
 swiftc \
   -O \
@@ -47,7 +66,8 @@ swiftc \
 "$BUILD_DIR/IconPackager" "$ICONSET_DIR" "$RESOURCES_DIR/AppIcon.icns"
 
 cp "$ROOT_DIR/Resources/Info.plist" "$CONTENTS_DIR/Info.plist"
-chmod +x "$MACOS_DIR/CodeAPIStatus"
-codesign --force --deep --sign - "$APP_DIR"
+chmod +x "$MACOS_DIR/CodexPulse"
+codesign --force --sign - --entitlements "$ROOT_DIR/WidgetExtension/CodexPulseWidget.entitlements" "$WIDGET_DIR"
+codesign --force --sign - --entitlements "$ROOT_DIR/Resources/CodexPulse.entitlements" "$APP_DIR"
 
 echo "$APP_DIR"

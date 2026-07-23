@@ -1,0 +1,4 @@
+安装 Codex Pulse
+
+请将“Codex Pulse.app”拖到“Applications”文件夹。
+复制完成后，从“应用程序”中打开 Codex Pulse。

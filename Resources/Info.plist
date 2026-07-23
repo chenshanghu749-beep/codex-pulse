@@ -5,7 +5,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>zh_CN</string>
     <key>CFBundleExecutable</key>
-    <string>CodeAPIStatus</string>
+    <string>CodexPulse</string>
     <key>CFBundleIdentifier</key>
     <string>net.nexita.codeapi-status</string>
     <key>CFBundleIconFile</key>
@@ -13,21 +13,21 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>CodeAPI Status</string>
+    <string>Codex Pulse</string>
     <key>CFBundleDisplayName</key>
-    <string>CodeAPI Status</string>
+    <string>Codex Pulse</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.5.0</string>
+    <string>2.4.1</string>
     <key>CFBundleVersion</key>
-    <string>8</string>
+    <string>17</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>CodeAPI Status</string>
+    <string>Codex Pulse</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
 </dict>

@@ -1,17 +1,17 @@
-model_provider = "codeapi"
-model = "gpt-5.6-sol"
+model_provider = "codeapi_status_provider_example"
+model = "custom-model"
 
 [mcp_servers.example]
 command = "example"
 
 # >>> CodeAPI Status managed provider >>>
-[model_providers.codeapi]
-name = "CodeAPI"
-base_url = "https://codeapi.nexita.net"
+[model_providers.codeapi_status_provider_example]
+name = "Example Provider"
+base_url = "https://api.example.com/v1"
 wire_api = "responses"
 
-[model_providers.codeapi.auth]
+[model_providers.codeapi_status_provider_example.auth]
 command = "/bin/cat"
-args = ["/Users/example/.codex/codeapi-status/codeapi.key"]
+args = ["/Users/example/.codex/codeapi-status/keys/example.key"]
 timeout_ms = 5000
 # <<< CodeAPI Status managed provider <<<
