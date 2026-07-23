@@ -16,6 +16,7 @@ enum RouteChoice: Equatable, Sendable {
 enum RouteConfigError: LocalizedError {
     case cannotReadConfig
     case cannotWriteConfig(String)
+    case invalidRenderedConfig(String)
     case chatGPTNotFound
     case cannotCloseCodex
     case providerNotFound
@@ -26,6 +27,8 @@ enum RouteConfigError: LocalizedError {
             return "无法读取 ~/.codex/config.toml。"
         case let .cannotWriteConfig(message):
             return "无法更新 Codex 配置：\(message)"
+        case let .invalidRenderedConfig(message):
+            return "生成的 Codex 配置无效：\(message)"
         case .chatGPTNotFound:
             return "未找到 Codex 应用，请确认它已安装。"
         case .cannotCloseCodex:
@@ -105,6 +108,7 @@ enum RouteConfigManager {
                 legacyProfile: legacyProfile,
                 officialModel: ProviderStore.officialModel()
             )
+            try validate(rendered)
             try Data(rendered.utf8).write(to: configURL, options: .atomic)
         } catch {
             throw RouteConfigError.cannotWriteConfig(error.localizedDescription)
@@ -145,7 +149,28 @@ enum RouteConfigManager {
         legacyProfile: ProviderProfile? = nil,
         officialModel: String? = nil
     ) -> String {
-        var cleaned = removingManagedBlock(from: content)
+        let configuredProfiles = profiles.isEmpty ? profile.map { [$0] } ?? [] : profiles
+        var providerEntries: [(id: String, profile: ProviderProfile)] = []
+        var emittedProviderIDs = Set<String>()
+        func appendProvider(id: String, profile: ProviderProfile) {
+            guard emittedProviderIDs.insert(id.lowercased()).inserted else { return }
+            providerEntries.append((id, profile))
+        }
+        for configuredProfile in configuredProfiles {
+            appendProvider(id: codexProviderID(for: configuredProfile.id), profile: configuredProfile)
+        }
+        if let legacy = legacyProfile ?? profile {
+            appendProvider(id: legacyManagedProviderID, profile: legacy)
+        }
+        if let codeAPI = configuredProfiles.first(where: { $0.id == "codeapi" || $0.isCodeAPI }) {
+            appendProvider(id: "codeapi", profile: codeAPI)
+        }
+
+        var cleaned = removingManagedBlocks(from: content)
+        cleaned = removingProviderTables(
+            from: cleaned,
+            providerIDs: Set(providerEntries.map { $0.id.lowercased() })
+        )
         var lines = cleaned.components(separatedBy: .newlines)
         var inTopLevel = true
         lines.removeAll { line in
@@ -171,25 +196,49 @@ enum RouteConfigManager {
         }
         cleaned = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let configuredProfiles = profiles.isEmpty ? profile.map { [$0] } ?? [] : profiles
-        guard !configuredProfiles.isEmpty else { return cleaned + "\n" }
-        var blocks: [String] = []
-        var emittedProviderIDs = Set<String>()
-        func appendProviderBlock(id: String, profile: ProviderProfile) {
-            guard emittedProviderIDs.insert(id.lowercased()).inserted else { return }
-            blocks.append(providerBlock(id: id, profile: profile))
-        }
-        for configuredProfile in configuredProfiles {
-            appendProviderBlock(id: codexProviderID(for: configuredProfile.id), profile: configuredProfile)
-        }
-        if let legacy = legacyProfile ?? profile {
-            appendProviderBlock(id: legacyManagedProviderID, profile: legacy)
-        }
-        if let codeAPI = configuredProfiles.first(where: { $0.id == "codeapi" || $0.isCodeAPI }) {
-            appendProviderBlock(id: "codeapi", profile: codeAPI)
-        }
+        guard !providerEntries.isEmpty else { return cleaned + "\n" }
+        let blocks = providerEntries.map { providerBlock(id: $0.id, profile: $0.profile) }
         let managed = ([beginMarker] + blocks + [endMarker]).joined(separator: "\n\n")
         return cleaned + "\n\n" + managed + "\n"
+    }
+
+    static func validate(_ content: String) throws {
+        var currentTable = "<root>"
+        var seenTables = Set<String>()
+        var seenKeysByTable: [String: Set<String>] = [:]
+        var arrayTableInstances: [String: Int] = [:]
+
+        for (offset, line) in content.components(separatedBy: .newlines).enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, !trimmed.hasPrefix("#") else { continue }
+
+            if let header = tableHeader(in: trimmed) {
+                if header.isArray {
+                    let instance = arrayTableInstances[header.name, default: 0]
+                    arrayTableInstances[header.name] = instance + 1
+                    currentTable = "[[\(header.name)]]#\(instance)"
+                } else {
+                    guard seenTables.insert(header.name).inserted else {
+                        throw RouteConfigError.invalidRenderedConfig(
+                            "第 \(offset + 1) 行重复定义表 [\(header.name)]。"
+                        )
+                    }
+                    currentTable = header.name
+                }
+                continue
+            }
+
+            guard let equals = trimmed.firstIndex(of: "=") else { continue }
+            let key = trimmed[..<equals].trimmingCharacters(in: .whitespaces)
+            guard !key.isEmpty else { continue }
+            var seenKeys = seenKeysByTable[currentTable, default: []]
+            guard seenKeys.insert(key).inserted else {
+                throw RouteConfigError.invalidRenderedConfig(
+                    "第 \(offset + 1) 行重复定义键 \(key)。"
+                )
+            }
+            seenKeysByTable[currentTable] = seenKeys
+        }
     }
 
     static func codexProviderID(for profileID: String) -> String {
@@ -250,16 +299,49 @@ enum RouteConfigManager {
             .replacingOccurrences(of: "\r", with: "\\r")
     }
 
-    private static func removingManagedBlock(from content: String) -> String {
-        guard let start = content.range(of: beginMarker),
-              let end = content.range(of: endMarker, range: start.lowerBound..<content.endIndex) else {
-            return content
-        }
+    private static func removingManagedBlocks(from content: String) -> String {
         var result = content
-        var upper = end.upperBound
-        if upper < result.endIndex, result[upper] == "\n" { upper = result.index(after: upper) }
-        result.removeSubrange(start.lowerBound..<upper)
+        while let start = result.range(of: beginMarker),
+              let end = result.range(of: endMarker, range: start.lowerBound..<result.endIndex) {
+            var upper = end.upperBound
+            if upper < result.endIndex, result[upper] == "\n" { upper = result.index(after: upper) }
+            result.removeSubrange(start.lowerBound..<upper)
+        }
         return result
+    }
+
+    private static func removingProviderTables(
+        from content: String,
+        providerIDs: Set<String>
+    ) -> String {
+        guard !providerIDs.isEmpty else { return content }
+        var output: [String] = []
+        var shouldSkip = false
+
+        for line in content.components(separatedBy: .newlines) {
+            if let header = tableHeader(in: line.trimmingCharacters(in: .whitespaces)) {
+                let table = header.name.lowercased()
+                shouldSkip = providerIDs.contains { providerID in
+                    let root = "model_providers.\(providerID)"
+                    return table == root || table.hasPrefix(root + ".")
+                }
+            }
+            if !shouldSkip { output.append(line) }
+        }
+        return output.joined(separator: "\n")
+    }
+
+    private static func tableHeader(in line: String) -> (name: String, isArray: Bool)? {
+        guard line.hasPrefix("[") else { return nil }
+        let isArray = line.hasPrefix("[[")
+        let closing = isArray ? "]]" : "]"
+        guard let end = line.range(of: closing) else { return nil }
+        let start = line.index(line.startIndex, offsetBy: isArray ? 2 : 1)
+        guard start <= end.lowerBound else { return nil }
+        let suffix = line[end.upperBound...].trimmingCharacters(in: .whitespaces)
+        guard suffix.isEmpty || suffix.hasPrefix("#") else { return nil }
+        let name = line[start..<end.lowerBound].trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? nil : (name, isArray)
     }
 }
 

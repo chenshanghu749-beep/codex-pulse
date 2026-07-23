@@ -99,7 +99,9 @@ enum OfficialUsageClient {
         // Codex builds it can temporarily return `account: null` even though the
         // desktop app and the shared Codex CLI session are authenticated. Treat
         // the CLI's explicit login status as the source of truth in that case.
-        let cliReportsLoggedIn = loginStatus(executable: executable).loggedIn
+        let cliStatus = loginStatus(executable: executable)
+        if loginStatusUsesAPIKey(cliStatus.output) { return .loggedOut }
+        let cliReportsLoggedIn = cliStatus.loggedIn
 
         let process = Process()
         process.executableURL = executable
@@ -223,7 +225,7 @@ enum OfficialUsageClient {
         }
 
         let messages = [
-            "{\"method\":\"initialize\",\"id\":0,\"params\":{\"clientInfo\":{\"name\":\"codex_pulse\",\"title\":\"Codex Pulse\",\"version\":\"2.4.2\"}}}",
+            "{\"method\":\"initialize\",\"id\":0,\"params\":{\"clientInfo\":{\"name\":\"codex_pulse\",\"title\":\"Codex Pulse\",\"version\":\"2.4.3\"}}}",
             "{\"method\":\"initialized\",\"params\":{}}",
             "{\"method\":\"account/read\",\"id\":1,\"params\":{\"refreshToken\":true}}",
             "{\"method\":\"account/rateLimits/read\",\"id\":6}",
@@ -276,12 +278,25 @@ enum OfficialUsageClient {
             let data = standardOutput.fileHandleForReading.readDataToEndOfFile()
                 + standardError.fileHandleForReading.readDataToEndOfFile()
             let text = String(data: data, encoding: .utf8) ?? ""
-            let explicitlyLoggedOut = text.range(of: "not logged in", options: .caseInsensitive) != nil
-                || text.range(of: "logged out", options: .caseInsensitive) != nil
-            return (process.terminationStatus == 0 && !explicitlyLoggedOut, process.terminationStatus, text)
+            return (
+                loginStatusIndicatesChatGPT(text, terminationStatus: process.terminationStatus),
+                process.terminationStatus,
+                text
+            )
         } catch {
             return (false, -1, error.localizedDescription)
         }
+    }
+
+    static func loginStatusIndicatesChatGPT(_ text: String, terminationStatus: Int32) -> Bool {
+        guard terminationStatus == 0 else { return false }
+        let explicitlyLoggedOut = text.range(of: "not logged in", options: .caseInsensitive) != nil
+            || text.range(of: "logged out", options: .caseInsensitive) != nil
+        return !explicitlyLoggedOut && !loginStatusUsesAPIKey(text)
+    }
+
+    static func loginStatusUsesAPIKey(_ text: String) -> Bool {
+        text.range(of: "using an api key", options: .caseInsensitive) != nil
     }
 
     private static func makeSnapshot(

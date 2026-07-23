@@ -511,6 +511,15 @@ if CommandLine.arguments.contains("--login-status-test") {
         semaphore.signal()
     }
     semaphore.wait()
+} else if CommandLine.arguments.contains("--repair-route-config") {
+    do {
+        let route = RouteConfigManager.currentRoute()
+        try RouteConfigManager.apply(route)
+        print("ROUTE_CONFIG_REPAIRED \(route.displayName)")
+    } catch {
+        FileHandle.standardError.write(Data("ROUTE_CONFIG_REPAIR_ERROR \(error.localizedDescription)\n".utf8))
+        exit(EXIT_FAILURE)
+    }
 } else if CommandLine.arguments.contains("--self-test") {
     let sqliteOutputBytes = try! SessionRouteSynchronizer.sqliteLargeOutputSelfTest()
     precondition(sqliteOutputBytes > 262_144)
@@ -563,6 +572,41 @@ if CommandLine.arguments.contains("--login-status-test") {
     precondition(codeAPIConfig.contains("[model_providers.codeapi]"))
     precondition(codeAPIConfig.components(separatedBy: "[model_providers.codeapi]").count == 2)
     precondition(codeAPIConfig.components(separatedBy: "[model_providers.codeapi.auth]").count == 2)
+    try! RouteConfigManager.validate(codeAPIConfig)
+
+    let legacyCodeAPIConfig = """
+    model_provider = "codeapi"
+    model = "gpt-5.6-sol"
+
+    [model_providers.codeapi]
+    name = "codeapi"
+    base_url = "https://codeapi.nexita.net"
+    wire_api = "responses"
+    requires_openai_auth = true
+
+    [mcp_servers.example]
+    command = "example"
+    """
+    let repairedCodeAPIConfig = RouteConfigManager.render(
+        legacyCodeAPIConfig,
+        route: .provider("codeapi"),
+        profile: .codeAPI,
+        profiles: [.codeAPI],
+        legacyProfile: .codeAPI
+    )
+    precondition(repairedCodeAPIConfig.components(separatedBy: "[model_providers.codeapi]").count == 2)
+    precondition(repairedCodeAPIConfig.components(separatedBy: "[model_providers.codeapi.auth]").count == 2)
+    precondition(!repairedCodeAPIConfig.contains("requires_openai_auth"))
+    precondition(repairedCodeAPIConfig.contains("[mcp_servers.example]"))
+    try! RouteConfigManager.validate(repairedCodeAPIConfig)
+    let rerenderedCodeAPIConfig = RouteConfigManager.render(
+        repairedCodeAPIConfig,
+        route: .provider("codeapi"),
+        profile: .codeAPI,
+        profiles: [.codeAPI],
+        legacyProfile: .codeAPI
+    )
+    precondition(rerenderedCodeAPIConfig == repairedCodeAPIConfig)
 
     let deepSeek = ProviderProfile(
         id: "deepseek-test",
@@ -582,6 +626,50 @@ if CommandLine.arguments.contains("--login-status-test") {
         "base_url = \"http://127.0.0.1:37531/provider/deepseek-test\""
     ))
     precondition(deepSeekConfig.contains("wire_api = \"responses\""))
+
+    let providerKey = "provider-test-key"
+    let providerAuth = try! JSONSerialization.data(withJSONObject: ["OPENAI_API_KEY": providerKey])
+    let chatGPTAuth = try! JSONSerialization.data(withJSONObject: [
+        "auth_mode": "chatgpt",
+        "OPENAI_API_KEY": providerKey,
+        "tokens": ["access_token": "official-access-token"]
+    ])
+    precondition(CodexAuthStore.kind(
+        of: providerAuth,
+        configuredProviderKeys: [providerKey]
+    ) == .configuredProviderAPIKey)
+    precondition(CodexAuthStore.kind(
+        of: chatGPTAuth,
+        configuredProviderKeys: [providerKey]
+    ) == .chatGPT)
+    let restorePlan = CodexAuthStore.officialPlan(
+        currentData: providerAuth,
+        backupData: chatGPTAuth,
+        configuredProviderKeys: [providerKey]
+    )
+    guard case let .restoreBackup(restoredAuth) = restorePlan else {
+        preconditionFailure("Expected official auth backup to be restored")
+    }
+    let restoredObject = try! JSONSerialization.jsonObject(with: restoredAuth) as! [String: Any]
+    precondition(restoredObject["OPENAI_API_KEY"] is NSNull)
+    precondition(CodexAuthStore.officialPlan(
+        currentData: providerAuth,
+        backupData: nil,
+        configuredProviderKeys: [providerKey]
+    ) == .removeCurrentAndRequireLogin)
+    precondition(!OfficialUsageClient.loginStatusIndicatesChatGPT(
+        "Logged in using an API key",
+        terminationStatus: 0
+    ))
+    precondition(OfficialUsageClient.loginStatusUsesAPIKey("Logged in using an API key"))
+    precondition(OfficialUsageClient.loginStatusIndicatesChatGPT(
+        "Logged in using ChatGPT",
+        terminationStatus: 0
+    ))
+    precondition(!OfficialUsageClient.loginStatusIndicatesChatGPT(
+        "Not logged in",
+        terminationStatus: 1
+    ))
 
     for style in StatusIconStyle.allCases {
         for signal in TrafficSignal.allCases {

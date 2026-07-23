@@ -139,6 +139,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.runModal()
     }
 
+    func presentOfficialLoginRequired() {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = "请重新登录 OpenAI 官方账号"
+        alert.informativeText = "检测到 Codex 的认证文件中残留了第三方 API Key，已将它安全移出官方认证。请在 Codex 中登录一次，后续切换会自动备份和恢复官方登录。"
+        alert.addButton(withTitle: "知道了")
+        alert.runModal()
+    }
+
     func ensureChatCompletionsBridge() {
         do {
             try chatCompletionsBridge.start()

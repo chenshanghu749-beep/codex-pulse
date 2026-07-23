@@ -9,8 +9,8 @@
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>Codex Pulse Widget</string>
     <key>CFBundlePackageType</key><string>XPC!</string>
-    <key>CFBundleShortVersionString</key><string>2.4.2</string>
-    <key>CFBundleVersion</key><string>18</string>
+    <key>CFBundleShortVersionString</key><string>2.4.3</string>
+    <key>CFBundleVersion</key><string>19</string>
     <key>CFBundleSupportedPlatforms</key>
     <array><string>MacOSX</string></array>
     <key>LSMinimumSystemVersion</key><string>14.0</string>

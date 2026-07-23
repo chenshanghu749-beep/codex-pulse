@@ -760,12 +760,25 @@ final class SettingsWindowController: NSWindowController {
                 return
             }
 
+            let authSnapshot: CodexAuthSnapshot
+            do {
+                authSnapshot = try CodexAuthStore.snapshot()
+            } catch {
+                showError(error.localizedDescription)
+                confirmButton.isEnabled = true
+                confirmButton.title = "应用并打开 Codex"
+                return
+            }
+
             statusLabel.stringValue = "正在关闭 Codex…"
             var codexWasStopped = false
             var sessionSyncCompleted = false
+            var authPreparation = CodexAuthPreparation.ready
             do {
                 try await CodexLauncher.terminate()
                 codexWasStopped = true
+                statusLabel.stringValue = "正在切换认证状态…"
+                authPreparation = try CodexAuthStore.prepareForSwitch(to: route)
                 statusLabel.stringValue = "正在同步本地会话…"
                 _ = try await SessionRouteSynchronizer.synchronize(to: route)
                 sessionSyncCompleted = true
@@ -775,6 +788,7 @@ final class SettingsWindowController: NSWindowController {
                 if sessionSyncCompleted {
                     _ = try? await SessionRouteSynchronizer.synchronize(to: previousRoute)
                 }
+                try? CodexAuthStore.restore(authSnapshot)
                 if codexWasStopped {
                     try? await CodexLauncher.launch()
                 }
@@ -785,12 +799,19 @@ final class SettingsWindowController: NSWindowController {
             }
 
             appDelegate?.routeDidChange(to: route, validatedCodeUsage: usage)
-            showSuccess("已切换到 \(route.displayName)。")
+            if authPreparation.requiresOfficialLogin {
+                showSuccess("已切换到官方路由，请在 Codex 中重新登录官方账号。")
+            } else {
+                showSuccess("已切换到 \(route.displayName)。")
+            }
             confirmButton.title = "切换成功"
             window?.close()
 
             do {
                 try await CodexLauncher.launch()
+                if authPreparation.requiresOfficialLogin {
+                    appDelegate?.presentOfficialLoginRequired()
+                }
             } catch {
                 appDelegate?.presentLaunchWarning(error.localizedDescription)
             }

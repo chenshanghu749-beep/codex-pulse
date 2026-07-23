@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/chenshanghu749-beep/codex-pulse/mai
 
 ## 手动安装
 
-下载 [`Codex-Pulse-2.4.2.dmg`](dist/Codex-Pulse-2.4.2.dmg)，打开后将 `Codex Pulse.app` 拖入 `Applications`。
+下载 [`Codex-Pulse-2.4.3.dmg`](dist/Codex-Pulse-2.4.3.dmg)，打开后将 `Codex Pulse.app` 拖入 `Applications`。
 
 若 macOS 首次运行时阻止打开，请在 Finder 中右键应用并选择“打开”。
 
@@ -53,17 +53,18 @@ chmod +x build.sh package.sh
 ./package.sh
 ```
 
-构建产物位于 `build/Codex Pulse.app`，安装包位于 `dist/Codex-Pulse-2.4.2.dmg`。
+构建产物位于 `build/Codex Pulse.app`，安装包位于 `dist/Codex-Pulse-2.4.3.dmg`。
 
 ## 隐私与安全
 
 - API Key 仅保存在本机，不会写入提供商列表或上传到仓库。
 - 凭据文件权限为 `600`，凭据目录权限为 `700`。
 - 路由切换前会备份相关本地配置和会话标记。
+- 进入第三方路由前会备份官方登录，切回官方时自动恢复并隔离第三方 API Key。
 - 应用不使用 macOS 钥匙串，不会反复触发钥匙串授权弹窗。
 
 ## 卸载
 
 退出 Codex Pulse，将 `Codex Pulse.app` 移到废纸篓即可。需要彻底清理配置时，可删除 `~/.codex/codeapi-status/`。
 
-当前版本：`2.4.2`
+当前版本：`2.4.3`
