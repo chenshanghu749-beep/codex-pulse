@@ -2,10 +2,10 @@
 set -euo pipefail
 
 readonly APP_NAME="Codex Pulse.app"
-readonly VERSION="2.4.1"
+readonly VERSION="2.4.2"
 readonly DMG_NAME="Codex-Pulse-${VERSION}.dmg"
 readonly DMG_URL="https://raw.githubusercontent.com/chenshanghu749-beep/codex-pulse/main/dist/${DMG_NAME}"
-readonly EXPECTED_SHA256="a09f2428265ce7a3ef4de67484ed8e2c0e3c425489e257c8c932ff6764aca342"
+readonly EXPECTED_SHA256="e2f438f27c04e384aa39556478fe59275c837a28fc02de01665ab9b967803b84"
 
 install_dir="${CODEX_PULSE_INSTALL_DIR:-${CODEAPI_STATUS_INSTALL_DIR:-$HOME/Applications}}"
 work_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-pulse-install.XXXXXX")"

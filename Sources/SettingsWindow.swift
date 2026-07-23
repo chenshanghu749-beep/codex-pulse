@@ -760,14 +760,16 @@ final class SettingsWindowController: NSWindowController {
                 return
             }
 
-            statusLabel.stringValue = "正在关闭 Codex 并同步本地会话…"
+            statusLabel.stringValue = "正在关闭 Codex…"
             var codexWasStopped = false
             var sessionSyncCompleted = false
             do {
                 try await CodexLauncher.terminate()
                 codexWasStopped = true
+                statusLabel.stringValue = "正在同步本地会话…"
                 _ = try await SessionRouteSynchronizer.synchronize(to: route)
                 sessionSyncCompleted = true
+                statusLabel.stringValue = "正在更新路由配置…"
                 try RouteConfigManager.apply(route)
             } catch {
                 if sessionSyncCompleted {

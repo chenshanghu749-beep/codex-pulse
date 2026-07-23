@@ -46,6 +46,17 @@ enum SessionRouteSynchronizer {
         }.value
     }
 
+    static func sqliteLargeOutputSelfTest() throws -> Int {
+        let databaseURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("codex-pulse-sqlite-test-\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: databaseURL) }
+        let data = try runSQLite(
+            databaseURL: databaseURL,
+            arguments: ["SELECT hex(randomblob(131072));"]
+        )
+        return data.count
+    }
+
     private static func providerID(for route: RouteChoice) -> String {
         switch route {
         case .official:
@@ -239,21 +250,68 @@ enum SessionRouteSynchronizer {
     }
 
     private static func runSQLite(databaseURL: URL, arguments: [String]) throws -> Data {
+        let fileManager = FileManager.default
+        let ioDirectory = fileManager.temporaryDirectory
+            .appendingPathComponent("codex-pulse-sqlite-\(UUID().uuidString)", isDirectory: true)
+        do {
+            try fileManager.createDirectory(
+                at: ioDirectory,
+                withIntermediateDirectories: false,
+                attributes: [.posixPermissions: 0o700]
+            )
+        } catch {
+            throw SessionRouteSyncError.sqliteFailed(error.localizedDescription)
+        }
+        defer { try? fileManager.removeItem(at: ioDirectory) }
+
+        let outputURL = ioDirectory.appendingPathComponent("stdout")
+        let errorURL = ioDirectory.appendingPathComponent("stderr")
+        let privateFileAttributes: [FileAttributeKey: Any] = [.posixPermissions: 0o600]
+        guard fileManager.createFile(
+            atPath: outputURL.path,
+            contents: nil,
+            attributes: privateFileAttributes
+        ), fileManager.createFile(
+            atPath: errorURL.path,
+            contents: nil,
+            attributes: privateFileAttributes
+        ) else {
+            throw SessionRouteSyncError.sqliteFailed("无法创建 SQLite 临时输出文件。")
+        }
+
         let process = Process()
         process.executableURL = sqliteURL
-        process.arguments = [databaseURL.path] + arguments
-        let output = Pipe()
-        let errors = Pipe()
-        process.standardOutput = output
-        process.standardError = errors
+        process.arguments = ["-cmd", ".timeout 5000", databaseURL.path] + arguments
+
+        let output: FileHandle
+        let errors: FileHandle
         do {
+            output = try FileHandle(forWritingTo: outputURL)
+            errors = try FileHandle(forWritingTo: errorURL)
+            process.standardOutput = output
+            process.standardError = errors
             try process.run()
         } catch {
             throw SessionRouteSyncError.sqliteFailed(error.localizedDescription)
         }
+        defer {
+            try? output.close()
+            try? errors.close()
+        }
+
+        // File-backed output avoids a pipe deadlock when the session list grows
+        // beyond the kernel pipe buffer while the parent waits for sqlite3.
         process.waitUntilExit()
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errors.fileHandleForReading.readDataToEndOfFile()
+        try? output.synchronize()
+        try? errors.synchronize()
+        let data: Data
+        let errorData: Data
+        do {
+            data = try Data(contentsOf: outputURL)
+            errorData = try Data(contentsOf: errorURL)
+        } catch {
+            throw SessionRouteSyncError.sqliteFailed(error.localizedDescription)
+        }
         guard process.terminationStatus == 0 else {
             let message = String(data: errorData, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
