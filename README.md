@@ -27,11 +27,12 @@ curl -fsSL https://raw.githubusercontent.com/chenshanghu749-beep/codex-pulse/mai
 
 安装完成后会自动启动 `Codex Pulse`。默认安装位置为 `~/Applications/Codex Pulse.app`。
 
-## 核心功能
-
 <p align="center">
   <img src="docs/assets/menu-bar-preview.png" alt="Codex Pulse 菜单栏预览" width="100%">
 </p>
+
+
+## 核心功能
 
 | 功能 | 说明 |
 | --- | --- |
