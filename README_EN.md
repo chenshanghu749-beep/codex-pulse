@@ -18,6 +18,10 @@
 
 Codex Pulse is a native macOS menu bar routing and status tool for the OpenAI Codex desktop app. It provides official and third-party model provider switching, protocol conversion, usage monitoring, task status, and session continuity without modifying the Codex app itself.
 
+<p align="center">
+  <img src="docs/assets/menu-bar-preview.png" alt="Codex Pulse menu bar preview" width="100%">
+</p>
+
 ## Quick Install
 
 ```bash

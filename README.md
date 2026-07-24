@@ -18,6 +18,10 @@
 
 Codex Pulse 是面向 OpenAI Codex 桌面应用的原生 macOS 菜单栏路由与状态工具。它提供官方与第三方模型供应商切换、协议转换、用量展示、任务状态与会话保持，无需修改 Codex 应用本体。
 
+<p align="center">
+  <img src="docs/assets/menu-bar-preview.png" alt="Codex Pulse 菜单栏预览" width="100%">
+</p>
+
 ## 快速安装
 
 ```bash
