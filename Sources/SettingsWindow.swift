@@ -274,7 +274,7 @@ final class SettingsWindowController: NSWindowController {
         )
         let providerRow = settingRow(
             title: "第三方提供商",
-            detail: "切换时会重新启动 Codex，并同步本地会话的路由标记。",
+            detail: "切换时会重新启动 Codex，并保留本地会话的原始记录。",
             control: routeProviderPopup
         )
         let historyRow = settingRow(
@@ -739,7 +739,6 @@ final class SettingsWindowController: NSWindowController {
 
         Task {
             let route: RouteChoice
-            let previousRoute = RouteConfigManager.currentRoute()
             var usage: UsageResponse?
             do {
                 if routeControl.selectedSegment == 1 {
@@ -772,22 +771,15 @@ final class SettingsWindowController: NSWindowController {
 
             statusLabel.stringValue = "正在关闭 Codex…"
             var codexWasStopped = false
-            var sessionSyncCompleted = false
             var authPreparation = CodexAuthPreparation.ready
             do {
                 try await CodexLauncher.terminate()
                 codexWasStopped = true
                 statusLabel.stringValue = "正在切换认证状态…"
                 authPreparation = try CodexAuthStore.prepareForSwitch(to: route)
-                statusLabel.stringValue = "正在同步本地会话…"
-                _ = try await SessionRouteSynchronizer.synchronize(to: route)
-                sessionSyncCompleted = true
                 statusLabel.stringValue = "正在更新路由配置…"
                 try RouteConfigManager.apply(route)
             } catch {
-                if sessionSyncCompleted {
-                    _ = try? await SessionRouteSynchronizer.synchronize(to: previousRoute)
-                }
                 try? CodexAuthStore.restore(authSnapshot)
                 if codexWasStopped {
                     try? await CodexLauncher.launch()

@@ -521,9 +521,6 @@ if CommandLine.arguments.contains("--login-status-test") {
         exit(EXIT_FAILURE)
     }
 } else if CommandLine.arguments.contains("--self-test") {
-    let sqliteOutputBytes = try! SessionRouteSynchronizer.sqliteLargeOutputSelfTest()
-    precondition(sqliteOutputBytes > 262_144)
-
     let sample = """
     model = "gpt-5.6-sol"
     model_provider = "legacy"
