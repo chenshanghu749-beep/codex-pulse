@@ -10,7 +10,8 @@ guard CommandLine.arguments.count == 2 else {
 }
 
 let outputURL = URL(fileURLWithPath: CommandLine.arguments[1])
-let canvasSize = NSSize(width: 760, height: 450)
+let rowHeight: CGFloat = 72
+let canvasSize = NSSize(width: 760, height: 98 + CGFloat(StatusIconStyle.allCases.count) * rowHeight)
 let image = NSImage(size: canvasSize, flipped: false) { rect in
     NSColor(calibratedWhite: 0.96, alpha: 1).setFill()
     rect.fill()
@@ -22,10 +23,10 @@ let image = NSImage(size: canvasSize, flipped: false) { rect in
             .foregroundColor: NSColor(calibratedWhite: 0.12, alpha: 1)
         ]
     )
-    title.draw(at: NSPoint(x: 32, y: 402))
+    title.draw(at: NSPoint(x: 32, y: rect.height - 48))
 
     for (index, style) in StatusIconStyle.allCases.enumerated() {
-        let y = CGFloat(334 - index * 72)
+        let y = rect.height - 116 - CGFloat(index) * rowHeight
         let label = NSAttributedString(
             string: style.displayName,
             attributes: [

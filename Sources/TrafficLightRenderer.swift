@@ -18,6 +18,7 @@ enum StatusIconStyle: String, CaseIterable {
     case trafficLight
     case lightBulb
     case topHatMascot
+    case basketballMascot
     case statusRing
 
     var displayName: String {
@@ -25,6 +26,7 @@ enum StatusIconStyle: String, CaseIterable {
         case .trafficLight: return "经典红绿灯"
         case .lightBulb: return "灵感灯泡"
         case .topHatMascot: return "礼帽伙伴"
+        case .basketballMascot: return "篮球伙伴"
         case .statusRing: return "状态圆环"
         }
     }
@@ -50,6 +52,7 @@ enum StatusIconRenderer {
         case .trafficLight: image = trafficLight(active: active)
         case .lightBulb: image = lightBulb(active: active)
         case .topHatMascot: image = topHatMascot(active: active, frame: frame)
+        case .basketballMascot: image = basketballMascot(active: active, frame: frame)
         case .statusRing: image = statusRing(active: active)
         }
         image.isTemplate = false
@@ -218,6 +221,124 @@ enum StatusIconRenderer {
                 sparkle.stroke()
             }
         }
+    }
+
+    private static func basketballMascot(active: TrafficSignal, frame: Int) -> NSImage {
+        guard let mascot = basketballMascotImage else {
+            return topHatMascot(active: active, frame: frame)
+        }
+        return canvas(width: 34) { _ in
+            let phase = CGFloat(frame % 12) / 12
+            let wave = sin(phase * .pi * 2)
+            let mascotOffset: NSPoint
+            switch active {
+            case .red:
+                mascotOffset = NSPoint(x: 0, y: abs(wave) * 0.65)
+            case .yellow:
+                mascotOffset = NSPoint(x: wave * 0.5, y: abs(wave) * 0.25)
+            case .green:
+                mascotOffset = .zero
+            }
+
+            // Draw the supplied character PNG directly. The crop keeps the
+            // original face, hair, clothes and basketball pixels unchanged.
+            let target = NSRect(
+                x: 1.5 + mascotOffset.x,
+                y: 0.5 + mascotOffset.y,
+                width: 15,
+                height: 17
+            )
+            mascot.draw(
+                in: target,
+                from: basketballMascotSourceRect,
+                operation: .sourceOver,
+                fraction: 1,
+                respectFlipped: true,
+                hints: [.interpolation: NSImageInterpolation.high]
+            )
+
+            let badgeCenter = NSPoint(x: 26, y: 8.8)
+            let badge = NSBezierPath(ovalIn: NSRect(x: 19, y: 1.8, width: 14, height: 14))
+            NSColor.windowBackgroundColor.withAlphaComponent(0.96).setFill()
+            badge.fill()
+            active.color.withAlphaComponent(0.95).setStroke()
+            badge.lineWidth = 1.3
+            badge.stroke()
+
+            switch active {
+            case .red:
+                drawBouncingBall(center: badgeCenter, wave: wave)
+            case .yellow:
+                drawMusicNotes(center: badgeCenter, wave: wave)
+            case .green:
+                drawCompletionCheck(center: badgeCenter)
+            }
+        }
+    }
+
+    private static let basketballMascotImage: NSImage? = {
+        let resourceURL = Bundle.main.url(forResource: "BasketballMascot", withExtension: "png")
+            ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+                .appendingPathComponent("Resources/BasketballMascot.png")
+        return NSImage(contentsOf: resourceURL)
+    }()
+
+    // The original 1088 × 960 PNG has transparent bounds x=343...744,
+    // y=8...735 in AppKit coordinates. This tighter crop keeps the face,
+    // bow tie and basketball readable at menu-bar size.
+    private static let basketballMascotSourceRect = NSRect(
+        x: 335,
+        y: 260,
+        width: 418,
+        height: 475
+    )
+
+    private static func drawBouncingBall(center: NSPoint, wave: CGFloat) {
+        let ballY = center.y - 3 + abs(wave) * 1.2
+        let ballRect = NSRect(x: center.x - 3, y: ballY, width: 6, height: 6)
+        let ball = NSBezierPath(ovalIn: ballRect)
+        NSColor.systemOrange.setFill()
+        ball.fill()
+        NSColor.labelColor.withAlphaComponent(0.9).setStroke()
+        ball.lineWidth = 0.65
+        ball.stroke()
+
+        let seams = NSBezierPath()
+        seams.move(to: NSPoint(x: center.x, y: ballRect.minY))
+        seams.line(to: NSPoint(x: center.x, y: ballRect.maxY))
+        seams.move(to: NSPoint(x: ballRect.minX, y: ballRect.midY))
+        seams.line(to: NSPoint(x: ballRect.maxX, y: ballRect.midY))
+        seams.lineWidth = 0.5
+        seams.stroke()
+    }
+
+    private static func drawMusicNotes(center: NSPoint, wave: CGFloat) {
+        let notes = NSBezierPath()
+        notes.move(to: NSPoint(x: center.x - 3.2, y: center.y + 2.8))
+        notes.line(to: NSPoint(x: center.x + 2.2, y: center.y + 4 + wave * 0.7))
+        notes.line(to: NSPoint(x: center.x + 2.2, y: center.y - 1))
+        notes.move(to: NSPoint(x: center.x - 3.2, y: center.y + 2.8))
+        notes.line(to: NSPoint(x: center.x - 3.2, y: center.y - 2.2))
+        TrafficSignal.yellow.color.setStroke()
+        notes.lineWidth = 1.2
+        notes.lineCapStyle = .round
+        notes.lineJoinStyle = .round
+        notes.stroke()
+        TrafficSignal.yellow.color.setFill()
+        NSBezierPath(ovalIn: NSRect(x: center.x - 5.2, y: center.y - 3.5, width: 3.1, height: 2.5)).fill()
+        NSBezierPath(ovalIn: NSRect(x: center.x + 0.2, y: center.y - 2.2, width: 3.1, height: 2.5)).fill()
+    }
+
+    private static func drawCompletionCheck(center: NSPoint) {
+        let check = NSBezierPath()
+        check.move(to: NSPoint(x: center.x - 4, y: center.y))
+        check.line(to: NSPoint(x: center.x - 1, y: center.y - 3))
+        check.line(to: NSPoint(x: center.x + 4.5, y: center.y + 3.5))
+        TrafficSignal.green.color.setStroke()
+        check.lineWidth = 2
+        check.lineCapStyle = .round
+        check.lineJoinStyle = .round
+        check.stroke()
     }
 
     private static func statusRing(active: TrafficSignal) -> NSImage {
