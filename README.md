@@ -1,8 +1,15 @@
 # Codex Pulse
 
+中文 | [English](README_EN.md)
+
+[![Release](https://img.shields.io/badge/release-2.4.4-111111?style=flat-square)](dist/Codex-Pulse-2.4.4.dmg)
+[![Stars](https://img.shields.io/github/stars/chenshanghu749-beep/codex-pulse?style=flat-square&color=111111)](https://github.com/chenshanghu749-beep/codex-pulse/stargazers)
+[![Swift](https://img.shields.io/badge/Swift-5-F05138?style=flat-square&logo=swift&logoColor=white)](https://www.swift.org/)
+[![macOS](https://img.shields.io/badge/macOS-13%2B-111111?style=flat-square&logo=apple&logoColor=white)](https://www.apple.com/macos/)
+
 <img width="684" height="60" alt="image" src="https://github.com/user-attachments/assets/41266f0f-89f3-4a37-91da-4133f2eb09a9" />
 
-一款为 Codex 设计的原生 macOS 菜单栏工具。快速切换 OpenAI 官方路由与第三方模型提供商，同时查看用量和任务状态。
+Codex Pulse 是面向 OpenAI Codex 桌面应用的原生 macOS 菜单栏路由与状态工具。它提供官方与第三方模型供应商切换、协议转换、用量展示、任务状态与会话保持，无需修改 Codex 应用本体。
 
 ## 快速安装
 
