@@ -67,4 +67,17 @@ chmod +x build.sh package.sh
 
 退出 Codex Pulse，将 `Codex Pulse.app` 移到废纸篓即可。需要彻底清理配置时，可删除 `~/.codex/codeapi-status/`。
 
+## 支持项目
+
+如果 Codex Pulse 对你有帮助，可以通过微信支持项目的持续维护。
+
+<details>
+<summary>查看微信收款码</summary>
+
+<p align="center">
+  <img src="docs/assets/wechat-pay.jpg" alt="微信收款码" width="320">
+</p>
+
+</details>
+
 当前版本：`2.4.4`
