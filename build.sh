@@ -67,6 +67,7 @@ swiftc \
 
 cp "$ROOT_DIR/Resources/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp "$ROOT_DIR/Resources/BasketballMascot.png" "$RESOURCES_DIR/BasketballMascot.png"
+cp "$ROOT_DIR/Resources/TrumpMascot.png" "$RESOURCES_DIR/TrumpMascot.png"
 chmod +x "$MACOS_DIR/CodexPulse"
 codesign --force --sign - --entitlements "$ROOT_DIR/WidgetExtension/CodexPulseWidget.entitlements" "$WIDGET_DIR"
 codesign --force --sign - --entitlements "$ROOT_DIR/Resources/CodexPulse.entitlements" "$APP_DIR"

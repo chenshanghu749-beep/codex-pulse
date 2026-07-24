@@ -673,9 +673,11 @@ if CommandLine.arguments.contains("--login-status-test") {
 
     for style in StatusIconStyle.allCases {
         for signal in TrafficSignal.allCases {
-            let icon = StatusIconRenderer.image(style: style, active: signal)
-            precondition(icon.size.height == 18)
-            precondition(icon.tiffRepresentation != nil)
+            for frame in [0, 6, 12, 18] {
+                let icon = StatusIconRenderer.image(style: style, active: signal, frame: frame)
+                precondition(icon.size.height == 18)
+                precondition(icon.tiffRepresentation != nil)
+            }
         }
     }
 

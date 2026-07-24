@@ -19,6 +19,7 @@ enum StatusIconStyle: String, CaseIterable {
     case lightBulb
     case topHatMascot
     case basketballMascot
+    case trumpMascot
     case statusRing
 
     var displayName: String {
@@ -27,6 +28,7 @@ enum StatusIconStyle: String, CaseIterable {
         case .lightBulb: return "灵感灯泡"
         case .topHatMascot: return "礼帽伙伴"
         case .basketballMascot: return "篮球伙伴"
+        case .trumpMascot: return "特朗普舞者"
         case .statusRing: return "状态圆环"
         }
     }
@@ -53,6 +55,7 @@ enum StatusIconRenderer {
         case .lightBulb: image = lightBulb(active: active)
         case .topHatMascot: image = topHatMascot(active: active, frame: frame)
         case .basketballMascot: image = basketballMascot(active: active, frame: frame)
+        case .trumpMascot: image = trumpMascot(active: active, frame: frame)
         case .statusRing: image = statusRing(active: active)
         }
         image.isTemplate = false
@@ -339,6 +342,142 @@ enum StatusIconRenderer {
         check.lineCapStyle = .round
         check.lineJoinStyle = .round
         check.stroke()
+    }
+
+    private static func trumpMascot(active: TrafficSignal, frame: Int) -> NSImage {
+        guard let mascot = trumpMascotImage else {
+            return topHatMascot(active: active, frame: frame)
+        }
+        return canvas(width: 38) { _ in
+            let phase = CGFloat(frame % 24) / 24
+            let wave = sin(phase * .pi * 2)
+            let doubleWave = sin(phase * .pi * 4)
+            let target = NSRect(x: 2.2, y: 0.5, width: 13.5, height: 17)
+
+            let angle: CGFloat
+            let offset: NSPoint
+            switch active {
+            case .red:
+                angle = wave * 7.5
+                offset = NSPoint(x: wave * 1.15, y: abs(doubleWave) * 0.5)
+            case .yellow:
+                angle = wave * 1.8
+                offset = NSPoint(x: wave * 0.3, y: abs(wave) * 0.15)
+            case .green:
+                angle = 0
+                offset = .zero
+            }
+
+            NSGraphicsContext.saveGraphicsState()
+            let anchor = NSPoint(x: target.midX + offset.x, y: target.minY + offset.y)
+            let transform = NSAffineTransform()
+            transform.translateX(by: anchor.x, yBy: anchor.y)
+            transform.rotate(byDegrees: angle)
+            transform.translateX(by: -anchor.x, yBy: -anchor.y)
+            transform.concat()
+            mascot.draw(
+                in: target.offsetBy(dx: offset.x, dy: offset.y),
+                from: trumpMascotSourceRect,
+                operation: .sourceOver,
+                fraction: 1,
+                respectFlipped: true,
+                hints: [.interpolation: NSImageInterpolation.high]
+            )
+            NSGraphicsContext.restoreGraphicsState()
+
+            if active == .red {
+                drawDanceMotionLines(wave: wave)
+            }
+
+            let badgeCenter = NSPoint(x: 28, y: 8.8)
+            let badge = NSBezierPath(ovalIn: NSRect(x: 20.7, y: 1.5, width: 14.6, height: 14.6))
+            NSColor.windowBackgroundColor.withAlphaComponent(0.96).setFill()
+            badge.fill()
+            active.color.withAlphaComponent(0.96).setStroke()
+            badge.lineWidth = 1.35
+            badge.stroke()
+
+            switch active {
+            case .red:
+                drawDanceBeat(center: badgeCenter, wave: wave)
+            case .yellow:
+                drawWaitingClock(center: badgeCenter, frame: frame)
+            case .green:
+                drawCompletionCheck(center: badgeCenter)
+            }
+        }
+    }
+
+    private static let trumpMascotImage: NSImage? = {
+        let resourceURL = Bundle.main.url(forResource: "TrumpMascot", withExtension: "png")
+            ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+                .appendingPathComponent("Resources/TrumpMascot.png")
+        return NSImage(contentsOf: resourceURL)
+    }()
+
+    // The supplied 992 × 1056 PNG has generous transparent padding. This
+    // crop keeps the original character readable without redrawing it.
+    private static let trumpMascotSourceRect = NSRect(
+        x: 270,
+        y: 82,
+        width: 500,
+        height: 810
+    )
+
+    private static func drawDanceMotionLines(wave: CGFloat) {
+        let lines = NSBezierPath()
+        lines.move(to: NSPoint(x: 0.8, y: 9.5 + wave * 0.8))
+        lines.curve(
+            to: NSPoint(x: 2.3, y: 13.3 + wave * 0.5),
+            controlPoint1: NSPoint(x: -0.2, y: 11),
+            controlPoint2: NSPoint(x: 0.7, y: 12.8)
+        )
+        lines.move(to: NSPoint(x: 15.7, y: 9.4 - wave * 0.8))
+        lines.curve(
+            to: NSPoint(x: 17.3, y: 13.1 - wave * 0.5),
+            controlPoint1: NSPoint(x: 16.8, y: 10.8),
+            controlPoint2: NSPoint(x: 16.9, y: 12.5)
+        )
+        TrafficSignal.red.color.withAlphaComponent(0.9).setStroke()
+        lines.lineWidth = 1.05
+        lines.lineCapStyle = .round
+        lines.stroke()
+    }
+
+    private static func drawDanceBeat(center: NSPoint, wave: CGFloat) {
+        let beat = NSBezierPath()
+        beat.move(to: NSPoint(x: center.x - 4.5, y: center.y))
+        beat.line(to: NSPoint(x: center.x - 2.2, y: center.y))
+        beat.line(to: NSPoint(x: center.x - 0.8, y: center.y + 3.3 + abs(wave) * 0.8))
+        beat.line(to: NSPoint(x: center.x + 1, y: center.y - 3))
+        beat.line(to: NSPoint(x: center.x + 2.4, y: center.y))
+        beat.line(to: NSPoint(x: center.x + 4.6, y: center.y))
+        TrafficSignal.red.color.setStroke()
+        beat.lineWidth = 1.35
+        beat.lineCapStyle = .round
+        beat.lineJoinStyle = .round
+        beat.stroke()
+    }
+
+    private static func drawWaitingClock(center: NSPoint, frame: Int) {
+        let clock = NSBezierPath(ovalIn: NSRect(x: center.x - 4.2, y: center.y - 4.2, width: 8.4, height: 8.4))
+        TrafficSignal.yellow.color.withAlphaComponent(0.95).setStroke()
+        clock.lineWidth = 1.15
+        clock.stroke()
+
+        let handAngle = CGFloat(frame % 24) / 24 * .pi * 2
+        let hands = NSBezierPath()
+        hands.move(to: center)
+        hands.line(to: NSPoint(x: center.x, y: center.y + 2.7))
+        hands.move(to: center)
+        hands.line(to: NSPoint(
+            x: center.x + cos(handAngle) * 3.1,
+            y: center.y + sin(handAngle) * 3.1
+        ))
+        TrafficSignal.yellow.color.setStroke()
+        hands.lineWidth = 1.05
+        hands.lineCapStyle = .round
+        hands.stroke()
     }
 
     private static func statusRing(active: TrafficSignal) -> NSImage {
