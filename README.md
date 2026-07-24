@@ -71,13 +71,8 @@ chmod +x build.sh package.sh
 
 如果 Codex Pulse 对你有帮助，可以通过微信支持项目的持续维护。
 
-<details>
-<summary>查看微信收款码</summary>
-
 <p align="center">
   <img src="docs/assets/wechat-pay.jpg" alt="微信收款码" width="320">
 </p>
-
-</details>
 
 当前版本：`2.4.4`
