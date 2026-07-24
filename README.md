@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img alt="Release" src="https://img.shields.io/badge/release-2.4.6-111111">
+  <img alt="Release" src="https://img.shields.io/badge/release-2.4.7-111111">
   <img alt="Stars" src="https://img.shields.io/github/stars/chenshanghu749-beep/codex-pulse">
   <img alt="Swift" src="https://img.shields.io/badge/swift-5-F05138">
   <img alt="AppKit" src="https://img.shields.io/badge/AppKit-native-111111">
@@ -59,7 +59,7 @@ curl -fsSL https://raw.githubusercontent.com/chenshanghu749-beep/codex-pulse/mai
 
 ## 手动安装
 
-下载 [`Codex-Pulse-2.4.6.dmg`](dist/Codex-Pulse-2.4.6.dmg)，打开后将 `Codex Pulse.app` 拖入 `Applications`。
+下载 [`Codex-Pulse-2.4.7.dmg`](dist/Codex-Pulse-2.4.7.dmg)，打开后将 `Codex Pulse.app` 拖入 `Applications`。
 
 若 macOS 首次运行时阻止打开，请在 Finder 中右键应用并选择“打开”。
 
@@ -73,7 +73,7 @@ chmod +x build.sh package.sh
 ./package.sh
 ```
 
-构建产物位于 `build/Codex Pulse.app`，安装包位于 `dist/Codex-Pulse-2.4.6.dmg`。
+构建产物位于 `build/Codex Pulse.app`，安装包位于 `dist/Codex-Pulse-2.4.7.dmg`。
 
 ## 隐私与安全
 
@@ -95,4 +95,4 @@ chmod +x build.sh package.sh
   <img src="docs/assets/wechat-pay.jpg" alt="微信收款码" width="320">
 </p>
 
-当前版本：`2.4.6`
+当前版本：`2.4.7`

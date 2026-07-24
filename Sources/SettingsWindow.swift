@@ -534,10 +534,9 @@ final class SettingsWindowController: NSWindowController {
     }
 
     @objc private func routeProviderChanged() {
-        let index = routeProviderPopup.indexOfSelectedItem
-        guard providers.indices.contains(index) else { return }
-        selectedProviderID = providers[index].id
-        providerPopup.selectItem(at: index)
+        guard let id = selectedProviderID(from: routeProviderPopup) else { return }
+        selectedProviderID = id
+        selectProvider(id, in: providerPopup)
         loadSelectedProvider()
         routeControl.selectedSegment = 1
         updateRouteFields()
@@ -572,18 +571,36 @@ final class SettingsWindowController: NSWindowController {
     private func reloadProviderPopups() {
         providerPopup.removeAllItems()
         routeProviderPopup.removeAllItems()
-        let names = providers.map(\.name)
-        providerPopup.addItems(withTitles: names)
-        routeProviderPopup.addItems(withTitles: names)
-        if let id = selectedProviderID, let index = providers.firstIndex(where: { $0.id == id }) {
-            providerPopup.selectItem(at: index)
-            routeProviderPopup.selectItem(at: index)
+        let titles = ProviderStore.popupTitles(for: providers)
+        for (provider, title) in zip(providers, titles) {
+            addProviderItem(title: title, providerID: provider.id, to: providerPopup)
+            addProviderItem(title: title, providerID: provider.id, to: routeProviderPopup)
+        }
+        if let id = selectedProviderID, providers.contains(where: { $0.id == id }) {
+            selectProvider(id, in: providerPopup)
+            selectProvider(id, in: routeProviderPopup)
         } else if !providers.isEmpty {
             selectedProviderID = providers[0].id
-            providerPopup.selectItem(at: 0)
-            routeProviderPopup.selectItem(at: 0)
+            selectProvider(providers[0].id, in: providerPopup)
+            selectProvider(providers[0].id, in: routeProviderPopup)
         }
         updateRouteFields()
+    }
+
+    private func addProviderItem(title: String, providerID: String, to popup: NSPopUpButton) {
+        popup.addItem(withTitle: title)
+        popup.lastItem?.representedObject = providerID
+    }
+
+    private func selectedProviderID(from popup: NSPopUpButton) -> String? {
+        popup.selectedItem?.representedObject as? String
+    }
+
+    private func selectProvider(_ providerID: String, in popup: NSPopUpButton) {
+        guard let index = popup.itemArray.firstIndex(where: {
+            ($0.representedObject as? String) == providerID
+        }) else { return }
+        popup.selectItem(at: index)
     }
 
     private func loadSelectedProvider() {
@@ -604,16 +621,15 @@ final class SettingsWindowController: NSWindowController {
     }
 
     @objc private func providerChanged() {
-        let index = providerPopup.indexOfSelectedItem
-        guard providers.indices.contains(index) else { return }
-        selectedProviderID = providers[index].id
-        routeProviderPopup.selectItem(at: index)
+        guard let id = selectedProviderID(from: providerPopup) else { return }
+        selectedProviderID = id
+        selectProvider(id, in: routeProviderPopup)
         loadSelectedProvider()
         statusLabel.stringValue = ""
     }
 
     @objc private func addProvider() {
-        selectedProviderID = UUID().uuidString.lowercased()
+        selectedProviderID = ProviderStore.makeProviderID(existing: providers)
         nameField.stringValue = "新提供商"
         baseURLField.stringValue = ""
         modelField.stringValue = ""
@@ -713,6 +729,9 @@ final class SettingsWindowController: NSWindowController {
         let model = modelField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let key = keyField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, !model.isEmpty, !key.isEmpty else { throw SettingsError.incomplete }
+        if ProviderStore.hasNameCollision(name, excluding: id, in: providers) {
+            throw SettingsError.duplicateName(name)
+        }
         guard let url = URL(string: baseURL), ["http", "https"].contains(url.scheme?.lowercased() ?? ""), url.host != nil else {
             throw SettingsError.invalidURL
         }
@@ -825,12 +844,14 @@ private enum SettingsError: LocalizedError {
     case noProvider
     case incomplete
     case invalidURL
+    case duplicateName(String)
 
     var errorDescription: String? {
         switch self {
         case .noProvider: return "请先新增一个第三方提供商。"
         case .incomplete: return "请完整填写名称、Base URL、模型 ID 和 API Key。"
         case .invalidURL: return "Base URL 必须是有效的 http 或 https 地址。"
+        case let .duplicateName(name): return "路由名称“\(name)”已存在，请换一个名称。"
         }
     }
 }

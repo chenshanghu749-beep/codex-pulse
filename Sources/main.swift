@@ -545,6 +545,38 @@ if CommandLine.arguments.contains("--login-status-test") {
     precondition(custom.contains("[model_providers.codeapi_status_custom]"))
     precondition(!custom.contains("model_provider = \"legacy\""))
 
+    let sameNameProvider = ProviderProfile(
+        id: "same-name-provider",
+        name: provider.name,
+        baseURL: "https://second.example.com/v1",
+        model: "second-model"
+    )
+    precondition(ProviderStore.hasNameCollision(
+        "  TEST \"PROVIDER\"  ",
+        excluding: sameNameProvider.id,
+        in: [provider]
+    ))
+    let duplicateTitles = ProviderStore.popupTitles(for: [provider, sameNameProvider])
+    precondition(duplicateTitles.count == 2)
+    precondition(duplicateTitles[0] != duplicateTitles[1])
+    let sameNameConfig = RouteConfigManager.render(
+        sample,
+        route: .provider(sameNameProvider.id),
+        profile: sameNameProvider,
+        profiles: [provider, sameNameProvider],
+        legacyProfile: sameNameProvider
+    )
+    precondition(sameNameConfig.hasPrefix(
+        "model_provider = \"codeapi_status_provider_same-name-provider\""
+    ))
+    precondition(sameNameConfig.contains(
+        "[model_providers.codeapi_status_provider_test-provider]"
+    ))
+    precondition(sameNameConfig.contains(
+        "[model_providers.codeapi_status_provider_same-name-provider]"
+    ))
+    try! RouteConfigManager.validate(sameNameConfig)
+
     let official = RouteConfigManager.render(
         custom,
         route: .official,
