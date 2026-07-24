@@ -80,8 +80,8 @@ enum CodexAuthStore {
             switch route {
             case .official:
                 return try prepareOfficialAuth()
-            case .provider:
-                try backupOfficialAuthIfPresent()
+            case let .provider(id):
+                try prepareProviderAuth(providerID: id)
                 return .ready
             }
         } catch let error as CodexAuthStoreError {
@@ -152,6 +152,18 @@ enum CodexAuthStore {
         case .keepCurrent:
             return .ready
         }
+    }
+
+    private static func prepareProviderAuth(providerID: String) throws {
+        try backupOfficialAuthIfPresent()
+        guard let key = CredentialStore.load(providerID: providerID) else {
+            throw CodexAuthStoreError.cannotPrepare("所选提供商尚未配置 API Key。")
+        }
+        let data = try JSONSerialization.data(
+            withJSONObject: ["OPENAI_API_KEY": key],
+            options: [.prettyPrinted, .sortedKeys]
+        )
+        try writeSecure(data, to: authURL)
     }
 
     private static func backupOfficialAuthIfPresent() throws {

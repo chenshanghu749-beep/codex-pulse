@@ -535,8 +535,9 @@ if CommandLine.arguments.contains("--login-status-test") {
         model: "custom-model"
     )
     let custom = RouteConfigManager.render(sample, route: .provider(provider.id), profile: provider)
-    precondition(custom.hasPrefix("model_provider = \"codeapi_status_provider_test-provider\""))
+    precondition(custom.hasPrefix("model_provider = \"openai\""))
     precondition(custom.contains("model = \"custom-model\""))
+    precondition(custom.contains("openai_base_url = \"https://api.example.com/v1\""))
     precondition(custom.contains("name = \"Test \\\"Provider\\\"\""))
     precondition(custom.contains("base_url = \"https://api.example.com/v1\""))
     precondition(custom.contains("[mcp_servers.example]"))
@@ -566,8 +567,9 @@ if CommandLine.arguments.contains("--login-status-test") {
         profiles: [provider, sameNameProvider],
         legacyProfile: sameNameProvider
     )
-    precondition(sameNameConfig.hasPrefix(
-        "model_provider = \"codeapi_status_provider_same-name-provider\""
+    precondition(sameNameConfig.hasPrefix("model_provider = \"openai\""))
+    precondition(sameNameConfig.contains(
+        "openai_base_url = \"https://second.example.com/v1\""
     ))
     precondition(sameNameConfig.contains(
         "[model_providers.codeapi_status_provider_test-provider]"
@@ -586,6 +588,7 @@ if CommandLine.arguments.contains("--login-status-test") {
     )
     precondition(official.hasPrefix("model_provider = \"openai\""))
     precondition(official.contains("model = \"gpt-5.6-sol\""))
+    precondition(!official.contains("openai_base_url ="))
     precondition(official.contains(RouteConfigManager.beginMarker))
     precondition(official.contains("[model_providers.codeapi_status_provider_test-provider]"))
     precondition(official.contains("[mcp_servers.example]"))
@@ -597,6 +600,8 @@ if CommandLine.arguments.contains("--login-status-test") {
         profiles: [.codeAPI],
         legacyProfile: .codeAPI
     )
+    precondition(codeAPIConfig.hasPrefix("model_provider = \"openai\""))
+    precondition(codeAPIConfig.contains("openai_base_url = \"https://codeapi.nexita.net\""))
     precondition(codeAPIConfig.contains("[model_providers.codeapi_status_custom]"))
     precondition(codeAPIConfig.contains("[model_providers.codeapi]"))
     precondition(codeAPIConfig.components(separatedBy: "[model_providers.codeapi]").count == 2)
@@ -651,10 +656,24 @@ if CommandLine.arguments.contains("--login-status-test") {
         legacyProfile: deepSeek
     )
     precondition(deepSeek.effectiveAPIFormat == .chatCompletions)
+    precondition(deepSeekConfig.hasPrefix("model_provider = \"openai\""))
+    precondition(deepSeekConfig.contains(
+        "openai_base_url = \"http://127.0.0.1:37531/provider/deepseek-test\""
+    ))
     precondition(deepSeekConfig.contains(
         "base_url = \"http://127.0.0.1:37531/provider/deepseek-test\""
     ))
     precondition(deepSeekConfig.contains("wire_api = \"responses\""))
+    precondition(RouteConfigManager.detectedRoute(
+        in: deepSeekConfig,
+        profiles: [deepSeek],
+        selectedProviderID: deepSeek.id
+    ) == .provider(deepSeek.id))
+    precondition(RouteConfigManager.detectedRoute(
+        in: official,
+        profiles: [provider],
+        selectedProviderID: provider.id
+    ) == .official)
 
     let providerKey = "provider-test-key"
     let providerAuth = try! JSONSerialization.data(withJSONObject: ["OPENAI_API_KEY": providerKey])

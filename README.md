@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img alt="Release" src="https://img.shields.io/badge/release-2.4.7-111111">
+  <img alt="Release" src="https://img.shields.io/badge/release-2.4.8-111111">
   <img alt="Stars" src="https://img.shields.io/github/stars/chenshanghu749-beep/codex-pulse">
   <img alt="Swift" src="https://img.shields.io/badge/swift-5-F05138">
   <img alt="AppKit" src="https://img.shields.io/badge/AppKit-native-111111">
@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/chenshanghu749-beep/codex-pulse/mai
 | 路由切换 | 在 OpenAI 官方路由和多个自定义提供商之间快速切换 |
 | 用量展示 | 在菜单栏查看余额、配额、重置时间及 Token 活动 |
 | 任务状态 | 红灯表示模型执行，黄灯表示工具或命令运行，绿灯表示任务完成 |
-| 会话保持 | 切换路由不改写 Codex 会话数据库，保留每条会话的原始记录 |
+| 会话保持 | 所有路由使用统一会话归属，不改写 Codex 会话数据库 |
 
 支持 Responses API，并可在本机将 DeepSeek 等 Chat Completions 接口转换为 Codex 所需协议。提供商配置支持连接测试，可在启用前校验 Base URL、API Key、模型与协议。
 
@@ -59,7 +59,7 @@ curl -fsSL https://raw.githubusercontent.com/chenshanghu749-beep/codex-pulse/mai
 
 ## 手动安装
 
-下载 [`Codex-Pulse-2.4.7.dmg`](dist/Codex-Pulse-2.4.7.dmg)，打开后将 `Codex Pulse.app` 拖入 `Applications`。
+下载 [`Codex-Pulse-2.4.8.dmg`](dist/Codex-Pulse-2.4.8.dmg)，打开后将 `Codex Pulse.app` 拖入 `Applications`。
 
 若 macOS 首次运行时阻止打开，请在 Finder 中右键应用并选择“打开”。
 
@@ -73,7 +73,7 @@ chmod +x build.sh package.sh
 ./package.sh
 ```
 
-构建产物位于 `build/Codex Pulse.app`，安装包位于 `dist/Codex-Pulse-2.4.7.dmg`。
+构建产物位于 `build/Codex Pulse.app`，安装包位于 `dist/Codex-Pulse-2.4.8.dmg`。
 
 ## 隐私与安全
 
@@ -95,4 +95,4 @@ chmod +x build.sh package.sh
   <img src="docs/assets/wechat-pay.jpg" alt="微信收款码" width="320">
 </p>
 
-当前版本：`2.4.7`
+当前版本：`2.4.8`

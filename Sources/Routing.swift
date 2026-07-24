@@ -54,23 +54,48 @@ enum RouteConfigManager {
         guard let content = try? String(contentsOf: configURL, encoding: .utf8) else {
             return .official
         }
+        return detectedRoute(
+            in: content,
+            profiles: ProviderStore.providers(),
+            selectedProviderID: ProviderStore.selectedProviderID()
+        )
+    }
+
+    static func detectedRoute(
+        in content: String,
+        profiles: [ProviderProfile],
+        selectedProviderID: String?
+    ) -> RouteChoice {
         let topLevel = topLevelProvider(in: content)?.lowercased()
+        if topLevel == "openai",
+           topLevelValue(named: "openai_base_url", in: content) != nil,
+           content.contains(beginMarker),
+           content.contains(endMarker),
+           let selectedProviderID,
+           profiles.contains(where: { $0.id == selectedProviderID }) {
+            return .provider(selectedProviderID)
+        }
         if let topLevel,
-           let profile = profile(forCodexProviderID: topLevel) {
+           let profile = profiles.first(where: {
+               codexProviderID(for: $0.id) == topLevel
+           }) {
             return .provider(profile.id)
         }
         if topLevel == legacyManagedProviderID,
-           let id = ProviderStore.selectedProviderID(),
-           ProviderStore.provider(id: id) != nil {
+           let id = selectedProviderID,
+           profiles.contains(where: { $0.id == id }) {
             return .provider(id)
         }
         if topLevel == "codeapi" {
-            return .provider("codeapi")
+            if let codeAPI = profiles.first(where: { $0.id == "codeapi" || $0.isCodeAPI }) {
+                return .provider(codeAPI.id)
+            }
         }
         if let topLevel,
            content.range(of: "[model_providers.\(topLevel)]", options: .caseInsensitive) != nil,
-           content.range(of: "codeapi.nexita.net", options: .caseInsensitive) != nil {
-            return .provider("codeapi")
+           content.range(of: "codeapi.nexita.net", options: .caseInsensitive) != nil,
+           let codeAPI = profiles.first(where: { $0.id == "codeapi" || $0.isCodeAPI }) {
+            return .provider(codeAPI.id)
         }
         return .official
     }
@@ -82,7 +107,12 @@ enum RouteConfigManager {
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
             let existing = (try? String(contentsOf: configURL, encoding: .utf8)) ?? ""
             let existingProvider = topLevelProvider(in: existing)?.lowercased()
-            if existingProvider == nil || existingProvider == "openai" {
+            let existingRoute = detectedRoute(
+                in: existing,
+                profiles: ProviderStore.providers(),
+                selectedProviderID: ProviderStore.selectedProviderID()
+            )
+            if existingProvider == nil || existingRoute == .official {
                 try ProviderStore.setOfficialModel(topLevelValue(named: "model", in: existing))
             }
             let profile: ProviderProfile?
@@ -179,7 +209,7 @@ enum RouteConfigManager {
             guard inTopLevel, let key = trimmed.split(separator: "=", maxSplits: 1).first?.trimmingCharacters(in: .whitespaces) else {
                 return false
             }
-            return key == "model_provider" || key == "model"
+            return key == "model_provider" || key == "model" || key == "openai_base_url"
         }
 
         while lines.first?.isEmpty == true { lines.removeFirst() }
@@ -191,8 +221,9 @@ enum RouteConfigManager {
             }
         case .provider:
             guard let profile else { return content }
-            lines.insert("model_provider = \"\(codexProviderID(for: profile.id))\"", at: 0)
+            lines.insert("model_provider = \"openai\"", at: 0)
             lines.insert("model = \"\(tomlEscape(profile.model))\"", at: 1)
+            lines.insert("openai_base_url = \"\(tomlEscape(activeBaseURL(for: profile)))\"", at: 2)
         }
         cleaned = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -258,9 +289,7 @@ enum RouteConfigManager {
     }
 
     private static func providerBlock(id: String, profile: ProviderProfile) -> String {
-        let baseURL = profile.effectiveAPIFormat == .chatCompletions
-            ? ChatCompletionsBridge.baseURL(providerID: profile.id)
-            : profile.normalizedBaseURL
+        let baseURL = activeBaseURL(for: profile)
         return """
         [model_providers.\(id)]
         name = "\(tomlEscape(profile.name))"
@@ -272,6 +301,12 @@ enum RouteConfigManager {
         args = ["\(tomlEscape(CredentialStore.keyURL(for: profile.id).path))"]
         timeout_ms = 5000
         """
+    }
+
+    private static func activeBaseURL(for profile: ProviderProfile) -> String {
+        profile.effectiveAPIFormat == .chatCompletions
+            ? ChatCompletionsBridge.baseURL(providerID: profile.id)
+            : profile.normalizedBaseURL
     }
 
     private static func topLevelProvider(in content: String) -> String? {

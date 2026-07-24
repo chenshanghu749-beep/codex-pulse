@@ -15,4 +15,4 @@ Tests/codex-home/tmp/
 
 # DMGs are ignored except for the verified installer published by this project.
 *.dmg
-!dist/Codex-Pulse-2.4.7.dmg
+!dist/Codex-Pulse-2.4.8.dmg
